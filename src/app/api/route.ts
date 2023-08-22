@@ -1,58 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
+import { VoiceObject } from "../page";
 
-const getHeaders = new Headers();
-getHeaders.append("accept", "application/json");
-getHeaders.append("xi-api-key", process.env.XI_API_KEY || "");
-//   body: JSON.stringify(request.prompt),
-
-const postHeaders = new Headers();
-postHeaders.append("accept", "audio/mpeg");
-postHeaders.append("xi-api-key", process.env.XI_API_KEY || "");
-postHeaders.append("Content-Type", "application/json");
-
-interface voiceObject {
-  available_for_tiers: string[];
-  category: string;
-  description: string;
-}
-
-export async function GET(req: NextRequest, res: NextResponse) {
+export async function GET() {
+  // Fetch the generated voices from ElevenLabs API
   const response = await fetch("https://api.elevenlabs.io/v1/voices", {
-    headers: getHeaders,
+    headers: {
+      accept: "application/json",
+      "xi-api-key": process.env.XI_API_KEY || "",
+    },
     method: "GET",
   });
+
   const result = await response.json();
+
+  // Return the voices we've generated
   const arrayOfGeneratedVoices = result.voices.filter(
-    (element: voiceObject) => element.category === "generated"
+    (element: VoiceObject) => element.category === "generated"
   );
-//   console.log(arrayOfGeneratedVoices);
+
   return NextResponse.json({ body: arrayOfGeneratedVoices });
 }
 
-export async function POST(req: NextRequest, res: NextResponse) {
+export async function POST(req: NextRequest) {
+  // Extract the text and voice id from the request body
   const request = await req.json();
-  console.log(request.text)
-  console.log(request.voiceId)
-  const theText = request.text
-  const theVoiceId= request.voiceId
-  // postHeaders.append
+
+  const theText = request.text;
+  const theVoiceId = request.voiceId;
+
+  // Create the POST request to ElevenLabs
   const postData = {
     text: theText,
     model_id: "eleven_monolingual_v1",
     voice_settings: {
       stability: 0.5,
-      similarity_boost: 0.5
-    }
+      similarity_boost: 0.5,
+      style: 0,
+      use_speaker_boost: true,
+    },
   };
-  const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${theVoiceId}`, {
-    headers: postHeaders,
-    method: "POST",
-    body: JSON.stringify(postData)
-  });
-  const result = await response.blob();
-  console.log(response)
-  console.log(result)
-  const finalResponse=new NextResponse(result)
-  return finalResponse
-}
 
+  // Send the POST request
+  const response = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${theVoiceId}`,
+    {
+      headers: {
+        accept: "audio/mpeg",
+        "xi-api-key": process.env.XI_API_KEY || "",
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+      body: JSON.stringify(postData),
+    }
+  );
+
+  // Return the response as a blob to the frontend
+  const result = await response.blob();
+  const finalResponse = new NextResponse(result);
+  return finalResponse;
+}

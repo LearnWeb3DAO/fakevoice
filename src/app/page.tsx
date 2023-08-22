@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-interface voiceObject {
+export interface VoiceObject {
   available_for_tiers: string[];
   category: string;
   description: string;
@@ -14,7 +14,7 @@ export default function Home() {
   const [theText, setTheText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [arrayOfVoices, setArrayOfVoices] = useState<
-    Array<voiceObject> | undefined
+    Array<VoiceObject> | undefined
   >();
   const [theVoiceId, setTheVoiceId] = useState<string | undefined>();
   const [theAudio, setTheAudio] = useState<string | undefined>();
@@ -44,12 +44,10 @@ export default function Home() {
     console.log(arrayOfVoices);
   }, [arrayOfVoices]);
 
-  const generateSpeech = async () => {
+  async function generateSpeech() {
+    if (!theText || !theVoiceId) return;
+
     setIsLoading(true);
-    if (!theText || !theVoiceId) {
-      setIsLoading(false);
-      return;
-    }
 
     try {
       const response = await fetch("/api", {
@@ -60,19 +58,16 @@ export default function Home() {
       if (response.ok) {
         console.log("Speech generated successfully");
         const theResponse = await response.blob();
-        const audioElement = new Audio();
         setTheAudio(URL.createObjectURL(theResponse));
-
-        setIsLoading(false);
       } else {
         console.error("Failed to generate speech");
-        setIsLoading(false);
       }
     } catch (error) {
       console.error("Error occurred during API call:", error);
-      setIsLoading(false);
     }
-  };
+
+    setIsLoading(false);
+  }
 
   return (
     <main className="flex min-h-screen bg-gray-900 flex-col items-center justify-between px-24 py-12">
@@ -85,16 +80,17 @@ export default function Home() {
         <div className="w-full">
           <div className="text-center">Choose a voice</div>
           <div className="w-full  flex  justify-center">
-            {arrayOfVoices? (
+            {arrayOfVoices ? (
               <div className="flex gap-4">
-                {arrayOfVoices.map((e: voiceObject) => (
+                {arrayOfVoices.map((e: VoiceObject) => (
                   <button
                     className={`border ${
-                      theVoiceId === e.voice_id ? "bg-gray-700" : ""
+                      theVoiceId === e.voice_id ? "bg-green-700" : ""
                     }   px-2 my-2 rounded-sm  py-1`}
                     onClick={() => setTheVoiceId(e.voice_id)}
                     key={e.voice_id}
-                  >{e.name}
+                  >
+                    {e.name}
                   </button>
                 ))}
               </div>
@@ -112,20 +108,18 @@ export default function Home() {
         />
 
         <button
-          className="bg-blue-600 px-5 mt-2 py-1 self-center h-max rounded-sm disabled:cursor-not-allowed disabled:bg-blue-900 transition-colors"
+          className="bg-blue-600 px-5 mt-2 py-1 self-center h-max rounded-sm hover:bg-blue-900 disabled:cursor-not-allowed disabled:bg-blue-900 transition-colors"
           onClick={generateSpeech}
           disabled={isLoading || !theText}
         >
-          Go!{" "}
+          {isLoading ? "Loading..." : "Go"}
         </button>
       </div>
       <div className="w-80 h-80 mt-12 relative placeholderdiv">
-        {theAudio ? (
+        {theAudio && (
           <audio controls src={theAudio}>
             Your browser does not support the audio tag
           </audio>
-        ) : (
-          ""
         )}
       </div>
     </main>
